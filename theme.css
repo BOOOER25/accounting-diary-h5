@@ -369,6 +369,25 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
 .photo-board .photo-open:focus-visible { outline: 2px dashed #f77088; outline-offset: 4px; }
 .photo-board .is-dragging .photo-open { cursor: grabbing; outline: 1px dashed #f77088; outline-offset: 4px; }
 .photo-board .photo-remove { right: 0; top: -8px; }
+.photo-board .photo-open { transition: transform .38s cubic-bezier(.22,1.5,.45,1), box-shadow .3s; transform-origin: center; }
+.photo-board .is-lifted .photo-open { transform: translateY(-14px) rotate(-3deg) scale(1.06); box-shadow: 2px 16px 24px #76502d38; }
+.photo-board .is-lifted.photo-piece-sticker .photo-open { box-shadow: none; filter: drop-shadow(2px 14px 8px #76502d40); }
+.photo-board .is-dragging .photo-open { transform: translateY(-8px) scale(1.03); }
+.photo-adjust { display: none; position: absolute; bottom: -29px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #fff2f4; border: 1px solid #e99bad; color: #bd506a; border-radius: 18px; padding: 3px 12px; font-size: 11px; }
+.is-lifted .photo-adjust, .photo-piece:focus-within .photo-adjust { display: block; }
+.app-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.share-entry { display: grid; place-items: center; padding: 5px; min-width: 28px; min-height: 34px; color: #806854; }
+.share-entry svg { width: 20px; height: 20px; }
+.share-preview { min-height: 130px; max-height: 43dvh; overflow: auto; background: #f1eadb; padding: 12px; border-radius: 12px; text-align: center; }
+.share-preview img { display: block; width: 100%; height: auto; border-radius: 5px; box-shadow: 0 3px 12px #76502d20; }
+.share-preview p { color: #a28d76; padding: 25px 0; font-size: 12px; }
+.share-actions { display: flex; gap: 10px; margin-top: 14px; }
+.share-actions button { flex: 1; min-height: 42px; margin: 0; }
+.share-save { border: 1px solid #bfae90; border-radius: 22px; background: #fff8e4; font-size: 12px; }
+.share-note { font-size: 10px; text-align: center; color: #a08d76; margin: 12px 0 0; }
+@media (prefers-reduced-motion: reduce) {
+  .photo-board .photo-open { transition: none; }
+}
 .photo-board-hint { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b0a390; pointer-events: none; }
 body[data-mode="read"] .photo-board .photo-open { cursor: zoom-in; touch-action: auto; }
 .photo-size-preview { height: 155px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #fff8e4; overflow: hidden; }

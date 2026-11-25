@@ -73,13 +73,14 @@ function renderPhotos() {
   host.classList.add('photo-board');
   host.innerHTML = photos.map(photo => `
     <figure class="photo-piece ${photo.sticker ? 'photo-piece-sticker' : ''}" data-photo-piece="${esc(photo.id)}">
-      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="${view === 'edit' ? '调整' : '查看'}${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}" ${view === 'edit' ? 'aria-haspopup="dialog" title="拖动摆放，轻点或长按调大小"' : ''}>
+      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="${view === 'edit' ? '调整' : '查看'}${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}" ${view === 'edit' ? 'aria-pressed="false" title="轻点浮起，拖动摆放，长按调大小"' : ''}>
         <img src="${photo.src}" alt="${photo.billName ? esc(photo.billName) + '的账单图片' : (photo.sticker ? '抠图后的白边照片' : '日记照片')}" draggable="false">
       </button>
+      ${view === 'edit' ? `<button class="photo-adjust" data-photo-adjust="${esc(photo.id)}">调大小</button>` : ''}
       ${view === 'edit' ? `<button class="photo-remove" data-photo-remove="${esc(photo.id)}" aria-label="移除这张照片">×</button>` : ''}
     </figure>`).join('');
   if (!photos.length) { host.style.height = ''; return; }
-  if (view === 'edit') host.insertAdjacentHTML('afterbegin', '<span class="photo-board-hint">拖动摆放 · 轻点或长按调大小</span>');
+  if (view === 'edit') host.insertAdjacentHTML('afterbegin', '<span class="photo-board-hint">轻点浮起 · 拖动摆放 · 长按调大小</span>');
   host.querySelectorAll('.photo-open img').forEach(image => image.addEventListener('load', layoutPhotoBoard, { once: true }));
   layoutPhotoBoard();
   let previousWidth = host.clientWidth;
@@ -96,6 +97,21 @@ let photoBoardObserver = null;
 let photoGesture = null;
 let suppressedPhotoClick = null;
 const clampPhoto = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function liftPhoto(id) {
+  const host = $('#diaryPhotos');
+  const photo = diaryPhotos().find(item => item.id === id);
+  const figure = host?.querySelector('[data-photo-piece="' + id + '"]');
+  if (!photo || !figure) return;
+  host.querySelectorAll('.is-lifted').forEach(item => {
+    item.classList.remove('is-lifted');
+    item.querySelector('.photo-open')?.setAttribute('aria-pressed', 'false');
+  });
+  const z = 1 + Math.max(0, ...[...host.querySelectorAll('[data-photo-piece]')].map(item => Number(item.style.zIndex) || 0));
+  storePhotoLayout(photo, { z });
+  figure.classList.add('is-lifted');
+  figure.querySelector('.photo-open').setAttribute('aria-pressed', 'true');
+}
 
 function savedPhotoLayout(photo) {
   const layout = entry().photoLayouts?.[photo.id];
@@ -242,7 +258,7 @@ document.addEventListener('pointerup', event => {
   finishPhotoGesture(true);
   if (!moved) {
     suppressedPhotoClick = { id: photo.id, until: performance.now() + 500 };
-    openPhotoSizing(photo.id);
+    liftPhoto(photo.id);
   }
 });
 document.addEventListener('pointercancel', () => finishPhotoGesture(false));
@@ -490,6 +506,14 @@ function placePhoto(draft) {
 }
 
 document.addEventListener('click', event => {
+  const adjust = event.target.closest('[data-photo-adjust]');
+  if (adjust) { openPhotoSizing(adjust.dataset.photoAdjust); return; }
+  if (!event.target.closest('[data-photo-piece],#overlay')) {
+    document.querySelectorAll('.is-lifted').forEach(item => {
+      item.classList.remove('is-lifted');
+      item.querySelector('.photo-open')?.setAttribute('aria-pressed', 'false');
+    });
+  }
   const choice = event.target.closest('[data-bill-photo-choice]');
   if (choice) { toggleBillPhoto(choice.dataset.billPhotoChoice); return; }
   const open = event.target.closest('[data-photo-open]');
@@ -511,7 +535,7 @@ document.addEventListener('click', event => {
     const photo = diaryPhotos().find(item => item.id === open.dataset.photoOpen);
     if (!photo) return;
     if (suppressedPhotoClick?.id === photo.id && suppressedPhotoClick.until > performance.now()) return;
-    if (view === 'edit') { openPhotoSizing(photo.id); return; }
+    if (view === 'edit') { liftPhoto(photo.id); return; }
     showSheet('今天的照片', `<div class="photo-preview photo-lightbox ${photo.sticker ? 'is-sticker' : ''}"><img src="${photo.src}" alt="${photo.sticker ? '白边照片' : '日记照片'}"></div>`);
   }
 });
