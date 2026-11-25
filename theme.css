@@ -318,6 +318,18 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
 
 .diary-photos { display: flex; flex-wrap: wrap; gap: 18px 12px; padding: 12px 2px 22px; }
 .diary-photos:empty { display: none; }
+.bill-photo-choices { display: flex; gap: 10px; overflow-x: auto; padding: 9px 2px 3px; margin-top: 4px; border-top: 1px dashed #e8dfcc; scrollbar-width: thin; }
+.bill-photo-choices:empty { display: none; }
+.bill-photo-choice { flex: 0 0 72px; padding: 0; text-align: center; }
+.bill-photo-image { position: relative; display: block; padding: 3px; border: 1.5px dashed #cfc5b1; border-radius: 8px 10px 7px 9px; background: #f5f1e9; }
+.bill-photo-image img { display: block; width: 63px; height: 51px; object-fit: cover; border-radius: 4px; opacity: .42; filter: grayscale(.7); }
+.bill-photo-check { position: absolute; right: -4px; top: -5px; display: grid; place-items: center; width: 19px; height: 19px; border: 1.5px solid #bcb19e; border-radius: 50%; background: #fffefa; color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
+.bill-photo-caption { display: block; margin-top: 4px; color: #a39786; font-size: 9px; line-height: 1.7; white-space: nowrap; }
+.bill-photo-choice.is-selected .bill-photo-image { border: 1.5px solid #f77088; background: #fff2f4; box-shadow: 0 1px 3px #f7708822; }
+.bill-photo-choice.is-selected img { opacity: 1; filter: none; }
+.bill-photo-choice.is-selected .bill-photo-check { background: #f77088; border-color: #f77088; }
+.bill-photo-choice.is-selected .bill-photo-caption { color: #c2697b; }
+.bill-photo-choice:focus-visible { outline: 2px solid #f77088; outline-offset: 3px; border-radius: 8px; }
 .photo-piece { margin: 0; position: relative; max-width: calc(50% - 6px); transform: rotate(-4deg); }
 .photo-piece:nth-child(even) { transform: rotate(4deg); }
 .photo-open { display: block; padding: 7px 7px 20px; background: #fff; border: 1px solid #eee5d7; box-shadow: 1px 3px 7px #7b573022; border-radius: 3px; }

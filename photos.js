@@ -12,13 +12,45 @@ function billPhotoVersion(src) {
   return src.length + ':' + (hash >>> 0).toString(36);
 }
 
+function billPhotoSelected(bill, key = day) {
+  return Boolean(bill.photo) && data[key]?.hiddenBillPhotos?.[bill.id] !== billPhotoVersion(bill.photo);
+}
+
+function renderBillPhotoChoices() {
+  const host = $('#billPhotoChoices');
+  if (!host) return;
+  host.innerHTML = dayBills().filter(bill => bill.photo).map(bill => {
+    const selected = billPhotoSelected(bill);
+    return `<button class="bill-photo-choice ${selected ? 'is-selected' : ''}" data-bill-photo-choice="${esc(bill.id)}" aria-pressed="${selected}" aria-label="${selected ? '取消选用' : '选用'}${esc(bill.name)}图片">
+      <span class="bill-photo-image"><img src="${bill.photo}" alt="${esc(bill.name)}的账单图片"><span class="bill-photo-check" aria-hidden="true">${selected ? '✓' : ''}</span></span>
+      <span class="bill-photo-caption">${esc(bill.name)} · ${selected ? '已选' : '未选'}</span>
+    </button>`;
+  }).join('');
+}
+
+function toggleBillPhoto(id) {
+  if (view !== 'edit') return;
+  const bill = dayBills().find(item => item.id === id);
+  if (!bill?.photo) return;
+  const diary = entry();
+  const previous = diary.hiddenBillPhotos;
+  const next = { ...previous };
+  if (billPhotoSelected(bill)) next[id] = billPhotoVersion(bill.photo);
+  else delete next[id];
+  diary.hiddenBillPhotos = next;
+  if (!save()) { diary.hiddenBillPhotos = previous; return; }
+  renderBillPhotoChoices();
+  renderPhotos();
+  document.querySelector('[data-bill-photo-choice="' + id + '"]')?.focus({ preventScroll: true });
+}
+
 function diaryPhotos(key = day) {
   const diary = data[key] || {};
-  const hidden = diary.hiddenBillPhotos || {};
-  const fromBills = dayBills(key).filter(bill => bill.photo && hidden[bill.id] !== billPhotoVersion(bill.photo)).map(bill => ({
+  const fromBills = dayBills(key).filter(bill => billPhotoSelected(bill, key)).map(bill => ({
     id: 'bill-' + bill.id,
     src: bill.photo,
     sticker: Boolean(bill.photoSticker),
+    sourceBillId: bill.id,
     billName: bill.name
   }));
   const seen = new Set();
@@ -32,7 +64,7 @@ function diaryPhotos(key = day) {
 function renderPhotos() {
   const host = $('#diaryPhotos');
   if (!host) return;
-  host.innerHTML = diaryPhotos().map(photo => `
+  host.innerHTML = diaryPhotos().filter(photo => view !== 'edit' || !photo.sourceBillId).map(photo => `
     <figure class="photo-piece ${photo.sticker ? 'photo-piece-sticker' : ''}">
       <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="查看${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}">
         <img src="${photo.src}" alt="${photo.billName ? esc(photo.billName) + '的账单图片' : (photo.sticker ? '抠图后的白边照片' : '日记照片')}">
@@ -279,6 +311,8 @@ function placePhoto(draft) {
 }
 
 document.addEventListener('click', event => {
+  const choice = event.target.closest('[data-bill-photo-choice]');
+  if (choice) { toggleBillPhoto(choice.dataset.billPhotoChoice); return; }
   const open = event.target.closest('[data-photo-open]');
   const remove = event.target.closest('[data-photo-remove]');
   if (remove && view === 'edit') {
