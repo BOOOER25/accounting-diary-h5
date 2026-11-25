@@ -17,15 +17,17 @@ function billPhotoSelected(bill, key = day) {
 }
 
 function renderBillPhotoChoices() {
-  const host = $('#billPhotoChoices');
-  if (!host) return;
-  host.innerHTML = dayBills().filter(bill => bill.photo).map(bill => {
-    const selected = billPhotoSelected(bill);
-    return `<button class="bill-photo-choice ${selected ? 'is-selected' : ''}" data-bill-photo-choice="${esc(bill.id)}" aria-pressed="${selected}" aria-label="${selected ? '取消选用' : '选用'}${esc(bill.name)}图片">
-      <span class="bill-photo-image"><img src="${bill.photo}" alt="${esc(bill.name)}的账单图片"><span class="bill-photo-check" aria-hidden="true">${selected ? '✓' : ''}</span></span>
-      <span class="bill-photo-caption">${esc(bill.name)} · ${selected ? '已选' : '未选'}</span>
-    </button>`;
-  }).join('');
+  document.querySelectorAll('[data-bill-photo-choice]').forEach(button => {
+    const bill = dayBills().find(item => item.id === button.dataset.billPhotoChoice);
+    if (bill?.photo) button.outerHTML = billPhotoChoice(bill);
+  });
+}
+
+function billPhotoChoice(bill) {
+  const selected = billPhotoSelected(bill);
+  return `<button class="bill-photo-choice ${selected ? 'is-selected' : ''}" data-bill-photo-choice="${esc(bill.id)}" aria-pressed="${selected}" aria-label="${selected ? '取消选用' : '选用'}${esc(bill.name)}图片">
+    <span class="bill-photo-image"><img src="${bill.photo}" alt="${esc(bill.name)}的账单图片" draggable="false"><span class="bill-photo-check" aria-hidden="true">${selected ? '✓' : ''}</span></span>
+  </button>`;
 }
 
 function toggleBillPhoto(id) {
@@ -62,16 +64,193 @@ function diaryPhotos(key = day) {
 }
 
 function renderPhotos() {
+  finishPhotoGesture(false);
+  suppressedPhotoClick = null;
+  photoBoardObserver?.disconnect();
   const host = $('#diaryPhotos');
   if (!host) return;
-  host.innerHTML = diaryPhotos().filter(photo => view !== 'edit' || !photo.sourceBillId).map(photo => `
-    <figure class="photo-piece ${photo.sticker ? 'photo-piece-sticker' : ''}">
-      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="查看${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}">
-        <img src="${photo.src}" alt="${photo.billName ? esc(photo.billName) + '的账单图片' : (photo.sticker ? '抠图后的白边照片' : '日记照片')}">
+  const photos = diaryPhotos();
+  host.classList.add('photo-board');
+  host.innerHTML = photos.map(photo => `
+    <figure class="photo-piece ${photo.sticker ? 'photo-piece-sticker' : ''}" data-photo-piece="${esc(photo.id)}">
+      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="${view === 'edit' ? '调整' : '查看'}${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}" ${view === 'edit' ? 'aria-haspopup="dialog" title="拖动摆放，轻点或长按调大小"' : ''}>
+        <img src="${photo.src}" alt="${photo.billName ? esc(photo.billName) + '的账单图片' : (photo.sticker ? '抠图后的白边照片' : '日记照片')}" draggable="false">
       </button>
       ${view === 'edit' ? `<button class="photo-remove" data-photo-remove="${esc(photo.id)}" aria-label="移除这张照片">×</button>` : ''}
     </figure>`).join('');
+  if (!photos.length) { host.style.height = ''; return; }
+  if (view === 'edit') host.insertAdjacentHTML('afterbegin', '<span class="photo-board-hint">拖动摆放 · 轻点或长按调大小</span>');
+  host.querySelectorAll('.photo-open img').forEach(image => image.addEventListener('load', layoutPhotoBoard, { once: true }));
+  layoutPhotoBoard();
+  let previousWidth = host.clientWidth;
+  photoBoardObserver = new ResizeObserver(() => {
+    if (Math.abs(host.clientWidth - previousWidth) > .5) {
+      previousWidth = host.clientWidth;
+      layoutPhotoBoard();
+    }
+  });
+  photoBoardObserver.observe(host);
 }
+
+let photoBoardObserver = null;
+let photoGesture = null;
+let suppressedPhotoClick = null;
+const clampPhoto = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function savedPhotoLayout(photo) {
+  const layout = entry().photoLayouts?.[photo.id];
+  return layout?.version === billPhotoVersion(photo.src) ? layout : {};
+}
+
+function layoutPhotoBoard() {
+  const host = $('#diaryPhotos');
+  if (!host || photoGesture || !host.clientWidth) return;
+  const photos = diaryPhotos();
+  let rowTop = 24, rowHeight = 0, bottom = 0;
+  photos.forEach((photo, index) => {
+    const figure = host.querySelector('[data-photo-piece="' + photo.id + '"]');
+    if (!figure) return;
+    if (index % 2 === 0 && index) { rowTop += rowHeight + 26; rowHeight = 0; }
+    const layout = savedPhotoLayout(photo);
+    const fraction = clampPhoto(Number(layout.width) || .4, .24, .92);
+    figure.style.width = (host.clientWidth * fraction) + 'px';
+    const image = figure.querySelector('img');
+    const ratio = image.naturalHeight && image.naturalWidth ? image.naturalHeight / image.naturalWidth : 1;
+    const innerWidth = Math.max(1, figure.clientWidth - (photo.sticker ? 0 : 16));
+    const height = innerWidth * ratio + (photo.sticker ? 0 : 30);
+    const freeWidth = Math.max(0, host.clientWidth - figure.offsetWidth);
+    const x = clampPhoto(Number.isFinite(layout.x) ? layout.x : (index % 2 ? .98 : .02), 0, 1);
+    const top = Number.isFinite(layout.y) ? clampPhoto(layout.y, 0, 2.5) * host.clientWidth : rowTop;
+    figure.style.left = Math.round(freeWidth * x) + 'px';
+    figure.style.top = Math.round(top) + 'px';
+    figure.style.zIndex = String(layout.z || index + 1);
+    rowHeight = Math.max(rowHeight, height);
+    bottom = Math.max(bottom, top + height);
+  });
+  host.style.height = photos.length ? Math.ceil(Math.max(230, bottom + 30)) + 'px' : '';
+}
+
+function currentPhotoPlacement(photo) {
+  const host = $('#diaryPhotos');
+  const figure = host?.querySelector('[data-photo-piece="' + photo.id + '"]');
+  if (!host || !figure) return savedPhotoLayout(photo);
+  return {
+    x: figure.offsetLeft / Math.max(1, host.clientWidth - figure.offsetWidth),
+    y: figure.offsetTop / Math.max(1, host.clientWidth),
+    width: figure.offsetWidth / Math.max(1, host.clientWidth),
+    z: Number(figure.style.zIndex) || 1
+  };
+}
+
+function storePhotoLayout(photo, changes) {
+  const diary = entry(), previous = diary.photoLayouts;
+  diary.photoLayouts = { ...previous, [photo.id]: {
+    ...currentPhotoPlacement(photo), ...changes, version: billPhotoVersion(photo.src)
+  } };
+  if (!save()) { diary.photoLayouts = previous; layoutPhotoBoard(); return false; }
+  layoutPhotoBoard();
+  return true;
+}
+
+function openPhotoSizing(id) {
+  if (view !== 'edit') return;
+  const photo = diaryPhotos().find(item => item.id === id);
+  if (!photo) return;
+  const percent = Math.round((currentPhotoPlacement(photo).width || .4) / .4 * 100 / 5) * 5;
+  showSheet('让这张照片更醒目', `
+    <div class="photo-size-preview"><img id="photoSizePreview" src="${photo.src}" alt="照片大小预览"></div>
+    <div class="photo-size-label"><label for="photoSize">照片大小</label><output id="photoSizeValue">${percent}%</output></div>
+    <input class="photo-size-slider" type="range" id="photoSize" min="60" max="230" step="5" value="${percent}" aria-label="照片大小">
+    <div class="photo-size-presets"><button data-photo-size="75">小巧一点</button><button data-photo-size="100">刚刚好</button><button data-photo-size="200">夸张一点</button></div>
+    <button class="confirm" id="finishPhotoSizing">就这样</button>`, () => {
+    const update = value => {
+      const requested = clampPhoto(Number(value), 60, 230);
+      if (!storePhotoLayout(photo, { width: .4 * requested / 100 })) return;
+      $('#photoSize').value = String(requested);
+      $('#photoSizeValue').textContent = requested + '%';
+      $('#photoSizePreview').style.width = (70 * requested / 100) + 'px';
+      document.querySelectorAll('[data-photo-size]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.photoSize) === requested)));
+    };
+    $('#photoSizePreview').style.width = (70 * percent / 100) + 'px';
+    $('#photoSize').oninput = event => update(event.target.value);
+    document.querySelectorAll('[data-photo-size]').forEach(button => {
+      button.setAttribute('aria-pressed', String(Number(button.dataset.photoSize) === percent));
+      button.onclick = () => update(button.dataset.photoSize);
+    });
+    $('#finishPhotoSizing').onclick = closeSheet;
+    $('#photoSize').focus();
+  });
+}
+
+function finishPhotoGesture(commit) {
+  const gesture = photoGesture;
+  if (!gesture) return;
+  photoGesture = null;
+  clearTimeout(gesture.timer);
+  gesture.figure.classList.remove('is-dragging');
+  if (gesture.button.hasPointerCapture(gesture.pointerId)) gesture.button.releasePointerCapture(gesture.pointerId);
+  if (gesture.moved) {
+    suppressedPhotoClick = { id: gesture.photo.id, until: performance.now() + 500 };
+    if (commit) storePhotoLayout(gesture.photo, currentPhotoPlacement(gesture.photo));
+    else layoutPhotoBoard();
+  }
+}
+
+document.addEventListener('pointerdown', event => {
+  const button = event.target.closest('#diaryPhotos .photo-open');
+  if (view !== 'edit' || !button || photoGesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  const photo = diaryPhotos().find(item => item.id === button.dataset.photoOpen);
+  if (!photo) return;
+  const figure = button.closest('[data-photo-piece]');
+  event.preventDefault();
+  button.focus({ preventScroll: true });
+  button.setPointerCapture(event.pointerId);
+  photoGesture = {
+    photo, figure, button, pointerId: event.pointerId,
+    startX: event.clientX, startY: event.clientY,
+    left: figure.offsetLeft, top: figure.offsetTop, scrollTop: $('#paper').scrollTop,
+    moved: false,
+    timer: setTimeout(() => {
+      if (!photoGesture || photoGesture.moved) return;
+      suppressedPhotoClick = { id: photo.id, until: performance.now() + 1000 };
+      finishPhotoGesture(false);
+      openPhotoSizing(photo.id);
+    }, 520)
+  };
+});
+
+document.addEventListener('pointermove', event => {
+  const gesture = photoGesture;
+  if (!gesture || gesture.pointerId !== event.pointerId) return;
+  const dx = event.clientX - gesture.startX, dy = event.clientY - gesture.startY;
+  if (!gesture.moved && Math.hypot(dx, dy) <= 6) return;
+  gesture.moved = true;
+  clearTimeout(gesture.timer);
+  const host = $('#diaryPhotos'), paper = $('#paper'), bounds = paper.getBoundingClientRect();
+  if (event.clientY > bounds.bottom - 28) paper.scrollTop += 7;
+  else if (event.clientY < bounds.top + 28) paper.scrollTop -= 7;
+  gesture.figure.classList.add('is-dragging');
+  gesture.figure.style.zIndex = String(1 + Math.max(0, ...[...host.querySelectorAll('[data-photo-piece]')].map(item => Number(item.style.zIndex) || 0)));
+  gesture.figure.style.left = clampPhoto(gesture.left + dx, 0, Math.max(0, host.clientWidth - gesture.figure.offsetWidth)) + 'px';
+  gesture.figure.style.top = clampPhoto(gesture.top + dy + paper.scrollTop - gesture.scrollTop, 0, host.clientWidth * 2.5) + 'px';
+  host.style.height = Math.max(230, ...[...host.querySelectorAll('[data-photo-piece]')].map(item => item.offsetTop + item.offsetHeight + 30)) + 'px';
+});
+
+document.addEventListener('pointerup', event => {
+  if (!photoGesture || event.pointerId !== photoGesture.pointerId) return;
+  const { photo, moved } = photoGesture;
+  finishPhotoGesture(true);
+  if (!moved) {
+    suppressedPhotoClick = { id: photo.id, until: performance.now() + 500 };
+    openPhotoSizing(photo.id);
+  }
+});
+document.addEventListener('pointercancel', () => finishPhotoGesture(false));
+document.addEventListener('lostpointercapture', () => finishPhotoGesture(false));
+document.addEventListener('contextmenu', event => {
+  if (view === 'edit' && event.target.closest('#diaryPhotos .photo-open')) event.preventDefault();
+});
+document.addEventListener('keydown', event => { if (event.key === 'Escape') finishPhotoGesture(false); });
 
 function openPhotoMenu(target = 'diary') {
   if (typeof target !== 'string') target = 'diary';
@@ -325,16 +504,21 @@ document.addEventListener('click', event => {
     diary.photos = (previous || []).filter(photo => photo.src !== selected.src);
     diary.hiddenBillPhotos = { ...previousHidden, ...Object.fromEntries(linkedBills.map(bill => [bill.id, billPhotoVersion(bill.photo)])) };
     if (!save()) { diary.photos = previous; diary.hiddenBillPhotos = previousHidden; return; }
+    renderBillPhotoChoices();
     renderPhotos();
     notify(linkedBills.length ? '已从日记移除，账单原图保留' : '已移除图片');
   } else if (open) {
     const photo = diaryPhotos().find(item => item.id === open.dataset.photoOpen);
     if (!photo) return;
+    if (suppressedPhotoClick?.id === photo.id && suppressedPhotoClick.until > performance.now()) return;
+    if (view === 'edit') { openPhotoSizing(photo.id); return; }
     showSheet('今天的照片', `<div class="photo-preview photo-lightbox ${photo.sticker ? 'is-sticker' : ''}"><img src="${photo.src}" alt="${photo.sticker ? '白边照片' : '日记照片'}"></div>`);
   }
 });
 
 window.addEventListener('pagehide', () => {
+  finishPhotoGesture(true);
+  photoBoardObserver?.disconnect();
   cancelPhotoEditor();
   cutoutWorker?.terminate();
   cutoutWorker = null;
