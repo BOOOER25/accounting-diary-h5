@@ -6,15 +6,38 @@ let cutoutJob = 0;
 let photoSelection = 0;
 let cancelActiveCutout = null;
 
+function billPhotoVersion(src) {
+  let hash = 2166136261;
+  for (let i = 0; i < src.length; i++) hash = Math.imul(hash ^ src.charCodeAt(i), 16777619);
+  return src.length + ':' + (hash >>> 0).toString(36);
+}
+
+function diaryPhotos(key = day) {
+  const diary = data[key] || {};
+  const hidden = diary.hiddenBillPhotos || {};
+  const fromBills = dayBills(key).filter(bill => bill.photo && hidden[bill.id] !== billPhotoVersion(bill.photo)).map(bill => ({
+    id: 'bill-' + bill.id,
+    src: bill.photo,
+    sticker: Boolean(bill.photoSticker),
+    billName: bill.name
+  }));
+  const seen = new Set();
+  return [...fromBills, ...(diary.photos || [])].filter(photo => {
+    if (seen.has(photo.src)) return false;
+    seen.add(photo.src);
+    return true;
+  });
+}
+
 function renderPhotos() {
   const host = $('#diaryPhotos');
   if (!host) return;
-  host.innerHTML = (entry().photos || []).map(photo => `
+  host.innerHTML = diaryPhotos().map(photo => `
     <figure class="photo-piece ${photo.sticker ? 'photo-piece-sticker' : ''}">
-      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="查看${photo.sticker ? '照片贴纸' : '日记照片'}">
-        <img src="${photo.src}" alt="${photo.sticker ? '抠图后的白边照片贴纸' : '日记照片'}">
+      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="查看${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}">
+        <img src="${photo.src}" alt="${photo.billName ? esc(photo.billName) + '的账单图片' : (photo.sticker ? '抠图后的白边照片' : '日记照片')}">
       </button>
-      ${view === 'edit' ? `<button class="photo-remove" data-photo-remove="${esc(photo.id)}" aria-label="移除这张${photo.sticker ? '贴纸' : '照片'}">×</button>` : ''}
+      ${view === 'edit' ? `<button class="photo-remove" data-photo-remove="${esc(photo.id)}" aria-label="移除这张照片">×</button>` : ''}
     </figure>`).join('');
 }
 
@@ -28,7 +51,7 @@ function openPhotoMenu(target = 'diary') {
       <button class="photo-source" id="pickPhoto">${ico('photo')}<span>上传图片</span></button>
       <button class="photo-source" id="takePhoto"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5 9.5 3h5L16 5h4a1 1 0 0 1 1 1v13H3V6a1 1 0 0 1 1-1Z"/><circle cx="12" cy="12" r="4"/></svg><span>拍一张</span></button>
     </div>
-    <p class="photo-hint">选好后，可以抠成一张白边小贴纸。</p>`, () => {
+    <p class="photo-hint">选好后，可以抠图并加上白色描边。</p>`, () => {
     $('#pickPhoto').onclick = () => $('#fileInput').click();
     $('#takePhoto').onclick = () => $('#cameraInput').click();
     $('#pickPhoto').focus();
@@ -85,7 +108,7 @@ function showPhotoEditor() {
   const draft = photoDraft;
   showSheet('一张今天的小纪念', `
     <div class="photo-preview ${draft.sticker ? 'is-sticker' : ''}" id="photoPreview">
-      <img id="photoPreviewImage" src="${draft.result}" alt="${draft.sticker ? '白边贴纸预览' : '所选照片预览'}">
+      <img id="photoPreviewImage" src="${draft.result}" alt="${draft.sticker ? '白边照片预览' : '所选照片预览'}">
     </div>
     <div class="photo-progress" id="photoProgress" role="status" aria-live="polite">${draft.sticker ? '白边已经贴好啦' : '保留原图，或把喜欢的部分抠出来'}</div>
     <div class="photo-actions">
@@ -245,27 +268,35 @@ function placePhoto(draft) {
     const bill = bills.find(item => item.id === draft.target);
     if (!bill) return;
     const previous = bill.photo;
+    const previousSticker = bill.photoSticker;
     bill.photo = draft.result;
+    bill.photoSticker = draft.sticker;
     refreshSources();
-    if (!save()) { bill.photo = previous; refreshSources(); return; }
+    if (!save()) { bill.photo = previous; bill.photoSticker = previousSticker; refreshSources(); return; }
     closeSheet();
   }
-  notify(draft.sticker ? '小贴纸收好啦' : '照片收好啦');
+  notify('照片收好啦');
 }
 
 document.addEventListener('click', event => {
   const open = event.target.closest('[data-photo-open]');
   const remove = event.target.closest('[data-photo-remove]');
   if (remove && view === 'edit') {
-    const previous = entry().photos;
-    entry().photos = previous.filter(photo => photo.id !== remove.dataset.photoRemove);
-    if (!save()) { entry().photos = previous; return; }
+    const selected = diaryPhotos().find(photo => photo.id === remove.dataset.photoRemove);
+    if (!selected) return;
+    const diary = entry();
+    const previous = diary.photos;
+    const previousHidden = diary.hiddenBillPhotos;
+    const linkedBills = dayBills().filter(bill => bill.photo === selected.src);
+    diary.photos = (previous || []).filter(photo => photo.src !== selected.src);
+    diary.hiddenBillPhotos = { ...previousHidden, ...Object.fromEntries(linkedBills.map(bill => [bill.id, billPhotoVersion(bill.photo)])) };
+    if (!save()) { diary.photos = previous; diary.hiddenBillPhotos = previousHidden; return; }
     renderPhotos();
-    notify('已移除图片');
+    notify(linkedBills.length ? '已从日记移除，账单原图保留' : '已移除图片');
   } else if (open) {
-    const photo = entry().photos?.find(item => item.id === open.dataset.photoOpen);
+    const photo = diaryPhotos().find(item => item.id === open.dataset.photoOpen);
     if (!photo) return;
-    showSheet(photo.sticker ? '今天的小贴纸' : '今天的照片', `<div class="photo-preview photo-lightbox ${photo.sticker ? 'is-sticker' : ''}"><img src="${photo.src}" alt="${photo.sticker ? '白边照片贴纸' : '日记照片'}"></div>`);
+    showSheet('今天的照片', `<div class="photo-preview photo-lightbox ${photo.sticker ? 'is-sticker' : ''}"><img src="${photo.src}" alt="${photo.sticker ? '白边照片' : '日记照片'}"></div>`);
   }
 });
 
