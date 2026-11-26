@@ -18,7 +18,7 @@ body {
 }
 button, input, textarea { -webkit-tap-highlight-color: transparent; }
 button { touch-action: manipulation; }
-button:focus-visible, textarea:focus-visible, .entry:focus-visible {
+button:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--pink);
   outline-offset: 3px;
 }
@@ -165,6 +165,13 @@ svg { stroke-width: 1.8; }
   font-size: 15px;
   line-height: 2.12;
   letter-spacing: .1px;
+  caret-color: #373128;
+  cursor: text;
+  -webkit-tap-highlight-color: transparent;
+}
+.entry:focus, .entry:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 .entry p { margin-bottom: 13px; }
 .entry:empty:before { color: #b3aa98; }
@@ -280,11 +287,12 @@ body[data-mode="read"] .entry { min-height: 0; padding-top: 2px; }
 body[data-mode="read"] .date { margin-bottom: 23px; }
 @media (max-width: 740px) {
   body { background: #fff; }
-  .layout { padding: 0; }
+  .layout { padding: 0; min-height: var(--diary-viewport-height, 100dvh); }
+  .entry, .note-input { font-size: 16px; }
   .phone {
     width: 100%;
     max-width: 480px;
-    height: 100dvh;
+    height: var(--diary-viewport-height, 100dvh);
     min-height: 0;
     padding: 0;
     border: 0;
