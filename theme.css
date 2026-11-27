@@ -286,13 +286,29 @@ svg { stroke-width: 1.8; }
 body[data-mode="read"] .entry { min-height: 0; padding-top: 2px; }
 body[data-mode="read"] .date { margin-bottom: 23px; }
 @media (max-width: 740px) {
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
   body { background: #fff; }
-  .layout { padding: 0; min-height: var(--diary-viewport-height, 100dvh); }
+  .layout {
+    position: absolute;
+    top: var(--diary-viewport-top, 0px);
+    left: 0;
+    width: 100%;
+    height: var(--diary-viewport-height, 100dvh);
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
   .entry, .note-input { font-size: 16px; }
   .phone {
     width: 100%;
     max-width: 480px;
-    height: var(--diary-viewport-height, 100dvh);
+    height: 100%;
     min-height: 0;
     padding: 0;
     border: 0;
@@ -301,7 +317,12 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
   }
   .screen { border: 0; border-radius: 0; background-size: 100% auto; }
   .appbar { height: 56px; padding: 0 19px; }
-  .paper { padding: 5px 20px 18px; }
+  .paper {
+    padding: 5px 20px 18px;
+    overflow-anchor: none;
+    scroll-behavior: auto;
+    overscroll-behavior-y: contain;
+  }
   .date { margin-top: 7px; min-height: 91px; }
   .sources { margin-bottom: 23px; }
   .bill-list { max-height: 184px; }
