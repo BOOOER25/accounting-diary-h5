@@ -9,6 +9,22 @@
   const editor = () => document.querySelector('#entry[contenteditable="true"]');
   const isEditing = () => document.activeElement?.matches('#entry[contenteditable="true"], textarea, input');
 
+  const preventPageZoom = event => {
+    if (event.cancelable) event.preventDefault();
+  };
+  // WKWebView may allow gestures despite viewport scale limits.
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(type => {
+    document.addEventListener(type, preventPageZoom, {passive: false});
+  });
+  const preventMultiTouchZoom = event => {
+    if (event.touches.length < 2) return;
+    preventPageZoom(event);
+    // A second finger must not turn a pending photo drag into an accidental move.
+    if (typeof finishPhotoGesture === 'function') finishPhotoGesture(false);
+  };
+  document.addEventListener('touchstart', preventMultiTouchZoom, {passive: false});
+  document.addEventListener('touchmove', preventMultiTouchZoom, {passive: false});
+
   function caretBounds(range) {
     const rect = range.getClientRects()[0];
     if (rect?.height) return rect;
@@ -77,7 +93,7 @@
     viewportFrame = 0;
     if (!mobile.matches) return;
     const viewport = window.visualViewport;
-    // Preserve pinch zoom and avoid interpreting a zoomed viewport as a keyboard.
+    // Host/system magnification must not be interpreted as a keyboard resize.
     if (viewport && Math.abs(viewport.scale - 1) > .01) return;
     const height = viewport?.height || window.innerHeight;
     if (height < 80) return;

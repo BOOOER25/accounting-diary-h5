@@ -16,6 +16,9 @@ body {
   color: var(--ink);
   font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
+/* Allow scrolling and text selection without page pinch/double-tap zoom. */
+html, body, .screen { touch-action: pan-x pan-y; }
+.paper, .sheet, .bill-list { touch-action: pan-y; }
 button, input, textarea { -webkit-tap-highlight-color: transparent; }
 button { touch-action: manipulation; }
 button:focus-visible, textarea:focus-visible {
