@@ -73,14 +73,13 @@ function renderPhotos() {
   host.classList.add('photo-board');
   host.innerHTML = photos.map(photo => `
     <figure class="photo-piece ${photo.sticker ? 'photo-piece-sticker' : ''}" data-photo-piece="${esc(photo.id)}">
-      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="${view === 'edit' ? '调整' : '查看'}${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}" ${view === 'edit' ? 'aria-pressed="false" title="轻点浮起，拖动摆放，长按调大小"' : ''}>
+      <button class="photo-open" data-photo-open="${esc(photo.id)}" aria-label="${view === 'edit' ? '调整' : '查看'}${photo.billName ? esc(photo.billName) + '账单图片' : (photo.sticker ? '抠图照片' : '日记照片')}" ${view === 'edit' ? 'aria-pressed="false"' : ''}>
         <img src="${photo.src}" alt="${photo.billName ? esc(photo.billName) + '的账单图片' : (photo.sticker ? '抠图后的白边照片' : '日记照片')}" draggable="false">
       </button>
       ${view === 'edit' ? `<button class="photo-adjust" data-photo-adjust="${esc(photo.id)}">调大小</button>` : ''}
       ${view === 'edit' ? `<button class="photo-remove" data-photo-remove="${esc(photo.id)}" aria-label="移除这张照片">×</button>` : ''}
     </figure>`).join('');
   if (!photos.length) { host.style.height = ''; return; }
-  if (view === 'edit') host.insertAdjacentHTML('afterbegin', '<span class="photo-board-hint">轻点浮起 · 拖动摆放 · 长按调大小</span>');
   host.querySelectorAll('.photo-open img').forEach(image => image.addEventListener('load', layoutPhotoBoard, { once: true }));
   layoutPhotoBoard();
   let previousWidth = host.clientWidth;
@@ -130,7 +129,7 @@ function layoutPhotoBoard() {
   const host = $('#diaryPhotos');
   if (!host || photoGesture || !host.clientWidth) return;
   const photos = diaryPhotos();
-  let rowTop = 24, rowHeight = 0, bottom = 0;
+  let rowTop = 12, rowHeight = 0, bottom = 0;
   photos.forEach((photo, index) => {
     const figure = host.querySelector('[data-photo-piece="' + photo.id + '"]');
     if (!figure) return;
@@ -228,11 +227,14 @@ document.addEventListener('pointerdown', event => {
   const figure = button.closest('[data-photo-piece]');
   event.preventDefault();
   button.focus({ preventScroll: true });
+  liftPhoto(photo.id);
   button.setPointerCapture(event.pointerId);
   photoGesture = {
     photo, figure, button, pointerId: event.pointerId,
     startX: event.clientX, startY: event.clientY,
     left: figure.offsetLeft, top: figure.offsetTop, scrollTop: $('#paper').scrollTop,
+    maxLeft: Math.max(0, $('#diaryPhotos').clientWidth - figure.offsetWidth),
+    maxTop: Math.max(0, $('#diaryPhotos').clientHeight - figure.offsetHeight - 30),
     moved: false,
     timer: setTimeout(() => {
       if (!photoGesture || photoGesture.moved) return;
@@ -255,9 +257,8 @@ document.addEventListener('pointermove', event => {
   else if (event.clientY < bounds.top + 28) paper.scrollTop -= 7;
   gesture.figure.classList.add('is-dragging');
   gesture.figure.style.zIndex = String(1 + Math.max(0, ...[...host.querySelectorAll('[data-photo-piece]')].map(item => Number(item.style.zIndex) || 0)));
-  gesture.figure.style.left = clampPhoto(gesture.left + dx, 0, Math.max(0, host.clientWidth - gesture.figure.offsetWidth)) + 'px';
-  gesture.figure.style.top = clampPhoto(gesture.top + dy + paper.scrollTop - gesture.scrollTop, 0, host.clientWidth * 2.5) + 'px';
-  host.style.height = Math.max(230, ...[...host.querySelectorAll('[data-photo-piece]')].map(item => item.offsetTop + item.offsetHeight + 30)) + 'px';
+  gesture.figure.style.left = clampPhoto(gesture.left + dx, 0, gesture.maxLeft) + 'px';
+  gesture.figure.style.top = clampPhoto(gesture.top + dy + paper.scrollTop - gesture.scrollTop, 0, gesture.maxTop) + 'px';
 });
 
 document.addEventListener('pointerup', event => {
@@ -266,7 +267,6 @@ document.addEventListener('pointerup', event => {
   finishPhotoGesture(true);
   if (!moved) {
     suppressedPhotoClick = { id: photo.id, until: performance.now() + 500 };
-    liftPhoto(photo.id);
   }
 });
 document.addEventListener('pointercancel', () => finishPhotoGesture(false));

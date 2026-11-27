@@ -196,16 +196,10 @@ svg { stroke-width: 1.8; }
 }
 .entry-photo { border: 3px solid #fff; outline: 1px solid #e9dfcc; border-radius: 3px; }
 .endmark { color: #eeafbb; font-size: 20px; margin: 30px 0 15px; }
-.tools {
-  height: 51px;
-  margin: 0 19px;
-  gap: 20px;
-  border-top: 1px dashed #e5d9bd;
-  background: #ffffffd9;
-}
-.tool { min-height: 38px; color: #7a6b51; font-size: 11px; gap: 5px; }
-.tool svg { width: 17px; height: 17px; }
-.save-state { color: #aca393; font-size: 10px; }
+
+
+
+
 .home { background: #564e42; }
 .overlay { z-index: 30; isolation: isolate; background: #27211d38; backdrop-filter: blur(1px); }
 .sheet {
@@ -326,7 +320,7 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
   .date { margin-top: 7px; min-height: 91px; }
   .sources { margin-bottom: 23px; }
   .bill-list { max-height: 184px; }
-  .tools { height: 53px; margin: 0 20px; padding-bottom: env(safe-area-inset-bottom); }
+  
   .sheet { padding-bottom: max(28px, env(safe-area-inset-bottom)); }
 }
 @media (max-width: 350px) {
@@ -391,6 +385,17 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
 }
 
 .photo-board { position: relative; z-index: 0; isolation: isolate; display: block; padding: 0; margin: 14px 0 10px; min-height: 230px; }
+.photo-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px dashed #e3a1ac;
+  border-radius: 12px;
+  background: #fff3e92b;
+  opacity: 0;
+  pointer-events: none;
+}
+body[data-mode="edit"] .photo-board:has(.is-lifted, .is-dragging)::before { opacity: 1; }
 .entry { min-height: 150px; }
 .photo-board .photo-piece { position: absolute; max-width: none; margin: 0; transform: none; }
 .photo-board .photo-open { width: 100%; cursor: grab; touch-action: none; user-select: none; -webkit-touch-callout: none; }
@@ -417,7 +422,6 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
 @media (prefers-reduced-motion: reduce) {
   .photo-board .photo-open { transition: none; }
 }
-.photo-board-hint { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b0a390; pointer-events: none; }
 body[data-mode="read"] .photo-board .photo-open { cursor: zoom-in; touch-action: auto; }
 .photo-size-preview { height: 155px; padding: 12px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #fff8e4; overflow: hidden; contain: paint; }
 .photo-size-preview img { display: block; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px #7b57302a); }
