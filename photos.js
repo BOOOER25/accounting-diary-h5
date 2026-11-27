@@ -500,7 +500,7 @@ function placePhoto(draft) {
     renderPhotos();
     $('#diaryPhotos').lastElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   } else {
-    const bill = bills.find(item => item.id === draft.target);
+    const bill = dayBills().find(item => item.id === draft.target);
     if (!bill) return;
     const previous = bill.photo;
     const previousSticker = bill.photoSticker;

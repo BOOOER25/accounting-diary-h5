@@ -42,7 +42,9 @@ async function createDiaryCard() {
     loadPhotoImage('assets/note-cat.png'),
     ...photos.map(photo => loadPhotoImage(photo.src))
   ]);
-  const photoTop = 155 + lines.length * 30;
+  const billCard = await prepareDiaryBillCard(dayBills(), contentWidth);
+  const textTop = billCard ? 130 + billCard.height + 28 : 153;
+  const photoTop = textTop + lines.length * 30 + 2;
   const placements = photos.map((photo, index) => {
     const image = images[index], layout = photo.placement;
     const w = contentWidth * (layout.width || .4);
@@ -80,7 +82,9 @@ async function createDiaryCard() {
   context.moveTo(pad, 115); context.lineTo(width - pad, 115); context.stroke();
   context.setLineDash([]);
   context.font = font; context.fillStyle = '#514839';
-  lines.forEach((line, index) => context.fillText(line, pad, 153 + index * 30));
+  billCard?.draw(context, pad, 130);
+  context.font = font; context.fillStyle = '#514839';
+  lines.forEach((line, index) => context.fillText(line, pad, textTop + index * 30));
   placements.forEach(({ photo, image, x, y, w, h, imageWidth }) => {
     context.save();
     context.shadowColor = '#76502d30'; context.shadowBlur = 8; context.shadowOffsetY = 4;
