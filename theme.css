@@ -77,7 +77,7 @@ svg { stroke-width: 1.8; }
   font-size: 12px;
 }
 .done:active, .confirm:active { box-shadow: inset 0 -1px 0 var(--pink-shadow); }
-.paper { padding: 8px 19px 18px; scrollbar-color: #ecdfbd transparent; }
+.paper { position: relative; z-index: 0; isolation: isolate; padding: 8px 19px 18px; scrollbar-color: #ecdfbd transparent; }
 .date {
   position: relative;
   align-items: flex-start;
@@ -207,7 +207,7 @@ svg { stroke-width: 1.8; }
 .tool svg { width: 17px; height: 17px; }
 .save-state { color: #aca393; font-size: 10px; }
 .home { background: #564e42; }
-.overlay { background: #27211d38; backdrop-filter: blur(1px); }
+.overlay { z-index: 30; isolation: isolate; background: #27211d38; backdrop-filter: blur(1px); }
 .sheet {
   border: 2px solid #30302c;
   border-bottom: 0;
@@ -390,7 +390,7 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
   .photo-hint { margin-top: 9px; font-size: 9px; }
 }
 
-.photo-board { position: relative; display: block; padding: 0; margin: 14px 0 10px; min-height: 230px; }
+.photo-board { position: relative; z-index: 0; isolation: isolate; display: block; padding: 0; margin: 14px 0 10px; min-height: 230px; }
 .entry { min-height: 150px; }
 .photo-board .photo-piece { position: absolute; max-width: none; margin: 0; transform: none; }
 .photo-board .photo-open { width: 100%; cursor: grab; touch-action: none; user-select: none; -webkit-touch-callout: none; }
@@ -419,8 +419,8 @@ body[data-mode="read"] .date { margin-bottom: 23px; }
 }
 .photo-board-hint { position: absolute; top: 0; left: 2px; font-size: 9px; color: #b0a390; pointer-events: none; }
 body[data-mode="read"] .photo-board .photo-open { cursor: zoom-in; touch-action: auto; }
-.photo-size-preview { height: 155px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #fff8e4; overflow: hidden; }
-.photo-size-preview img { display: block; height: auto; max-width: 95%; max-height: 145px; object-fit: contain; filter: drop-shadow(0 2px 3px #7b57302a); }
+.photo-size-preview { height: 155px; padding: 12px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #fff8e4; overflow: hidden; contain: paint; }
+.photo-size-preview img { display: block; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px #7b57302a); }
 .photo-size-label { display: flex; justify-content: space-between; align-items: center; margin: 13px 0 6px; font-size: 12px; color: #8d715d; }
 .photo-size-label output { color: #ce5d78; }
 .photo-size-slider { display: block; width: 100%; height: 25px; padding: 0; margin: 3px 0 14px; accent-color: #f77088; cursor: pointer; }

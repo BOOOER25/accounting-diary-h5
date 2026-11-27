@@ -98,6 +98,14 @@ let photoGesture = null;
 let suppressedPhotoClick = null;
 const clampPhoto = (value, min, max) => Math.min(max, Math.max(min, value));
 
+function settlePhotosForSheet() {
+  finishPhotoGesture(false);
+  document.querySelectorAll('#diaryPhotos .is-lifted').forEach(figure => {
+    figure.classList.remove('is-lifted');
+    figure.querySelector('.photo-open')?.setAttribute('aria-pressed', 'false');
+  });
+}
+
 function liftPhoto(id) {
   const host = $('#diaryPhotos');
   const photo = diaryPhotos().find(item => item.id === id);
@@ -194,7 +202,7 @@ function openPhotoSizing(id) {
       button.onclick = () => update(button.dataset.photoSize);
     });
     $('#finishPhotoSizing').onclick = closeSheet;
-    $('#photoSize').focus();
+    $('#photoSize').focus({ preventScroll: true });
   });
 }
 
@@ -214,7 +222,7 @@ function finishPhotoGesture(commit) {
 
 document.addEventListener('pointerdown', event => {
   const button = event.target.closest('#diaryPhotos .photo-open');
-  if (view !== 'edit' || !button || photoGesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  if (view !== 'edit' || !button || !$('#overlay').hidden || photoGesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
   const photo = diaryPhotos().find(item => item.id === button.dataset.photoOpen);
   if (!photo) return;
   const figure = button.closest('[data-photo-piece]');
